@@ -191,7 +191,7 @@ class DecisionEngineServiceTest {
                 new BigDecimal(riskScore));
 
         AccessRequestResponse response =
-                decisionEngineService.evaluateAndSave(agent, request, "request-key");
+                decisionEngineService.evaluateAndSave(agent, request, null);
 
         assertThat(response.getOutcome()).isEqualTo(expectedOutcome);
         assertThat(response.getReasonCode()).isEqualTo(expectedReasonCode);
@@ -209,7 +209,7 @@ class DecisionEngineServiceTest {
         assertThat(savedEntity.getRiskScore()).isEqualByComparingTo(riskScore);
         assertThat(savedEntity.getOutcome()).isEqualTo(expectedOutcome);
         assertThat(savedEntity.getReasonCode()).isEqualTo(expectedReasonCode);
-        assertThat(savedEntity.getIdempotencyKey()).isEqualTo("request-key");
+        assertThat(savedEntity.getIdempotencyKey()).isNull();
     }
 
     private AccessRequestResponse toResponse(AccessRequestEntity entity) {
