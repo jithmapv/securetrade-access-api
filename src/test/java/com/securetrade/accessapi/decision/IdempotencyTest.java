@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -80,7 +81,9 @@ class IdempotencyTest {
         when(persistenceService.findByAgentIdAndIdempotencyKey(
                 AGENT_ID, IDEMPOTENCY_KEY))
                 .thenReturn(Optional.empty());
-        when(persistenceService.saveIdempotentRequest(any(AccessRequestEntity.class)))
+        when(persistenceService.saveIdempotentRequest(
+                any(AccessRequestEntity.class),
+                eq("agent.one")))
                 .thenAnswer(invocation -> savedResponse(
                         invocation.getArgument(0),
                         FIRST_REQUEST_ID,
@@ -95,11 +98,13 @@ class IdempotencyTest {
 
         ArgumentCaptor<AccessRequestEntity> entityCaptor =
                 ArgumentCaptor.forClass(AccessRequestEntity.class);
-        verify(persistenceService).saveIdempotentRequest(entityCaptor.capture());
+        verify(persistenceService).saveIdempotentRequest(
+                entityCaptor.capture(),
+                eq("agent.one"));
         assertThat(entityCaptor.getValue().getIdempotencyKey())
                 .isEqualTo(IDEMPOTENCY_KEY);
         verify(persistenceService, never())
-                .saveRequest(any(AccessRequestEntity.class));
+                .saveRequest(any(AccessRequestEntity.class), any());
     }
 
     @Test
@@ -116,15 +121,17 @@ class IdempotencyTest {
         assertThat(response).isSameAs(cachedResponse);
         assertThat(response.getOutcome()).isEqualTo(DecisionResult.APPROVED);
         verify(persistenceService, never())
-                .saveIdempotentRequest(any(AccessRequestEntity.class));
+                .saveIdempotentRequest(any(AccessRequestEntity.class), any());
         verify(persistenceService, never())
-                .saveRequest(any(AccessRequestEntity.class));
+                .saveRequest(any(AccessRequestEntity.class), any());
     }
 
     @Test
     void missingKeyCreatesDistinctRequests() {
         AtomicInteger saveCount = new AtomicInteger();
-        when(persistenceService.saveRequest(any(AccessRequestEntity.class)))
+        when(persistenceService.saveRequest(
+                any(AccessRequestEntity.class),
+                eq("agent.one")))
                 .thenAnswer(invocation -> savedResponse(
                         invocation.getArgument(0),
                         saveCount.getAndIncrement() == 0
@@ -141,7 +148,9 @@ class IdempotencyTest {
         assertThat(first.getIdempotencyKey()).isNull();
         assertThat(second.getIdempotencyKey()).isNull();
         verify(persistenceService, times(2))
-                .saveRequest(any(AccessRequestEntity.class));
+                .saveRequest(
+                        any(AccessRequestEntity.class),
+                        eq("agent.one"));
         verify(persistenceService, never())
                 .findByAgentIdAndIdempotencyKey(
                         any(UUID.class), any(String.class));
@@ -149,7 +158,9 @@ class IdempotencyTest {
 
     @Test
     void blankKeyIsTreatedAsMissing() {
-        when(persistenceService.saveRequest(any(AccessRequestEntity.class)))
+        when(persistenceService.saveRequest(
+                any(AccessRequestEntity.class),
+                eq("agent.one")))
                 .thenAnswer(invocation -> savedResponse(
                         invocation.getArgument(0),
                         FIRST_REQUEST_ID,
@@ -163,7 +174,7 @@ class IdempotencyTest {
                 .findByAgentIdAndIdempotencyKey(
                         any(UUID.class), any(String.class));
         verify(persistenceService, never())
-                .saveIdempotentRequest(any(AccessRequestEntity.class));
+                .saveIdempotentRequest(any(AccessRequestEntity.class), any());
     }
 
     @Test
@@ -175,7 +186,9 @@ class IdempotencyTest {
                 AGENT_ID, IDEMPOTENCY_KEY))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(cachedResponse));
-        when(persistenceService.saveIdempotentRequest(any(AccessRequestEntity.class)))
+        when(persistenceService.saveIdempotentRequest(
+                any(AccessRequestEntity.class),
+                eq("agent.one")))
                 .thenThrow(conflict);
 
         AccessRequestResponse response = decisionEngineService
@@ -193,7 +206,9 @@ class IdempotencyTest {
         when(persistenceService.findByAgentIdAndIdempotencyKey(
                 AGENT_ID, IDEMPOTENCY_KEY))
                 .thenReturn(Optional.empty());
-        when(persistenceService.saveIdempotentRequest(any(AccessRequestEntity.class)))
+        when(persistenceService.saveIdempotentRequest(
+                any(AccessRequestEntity.class),
+                eq("agent.one")))
                 .thenThrow(conflict);
 
         assertThatThrownBy(() -> decisionEngineService
