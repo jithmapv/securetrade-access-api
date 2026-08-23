@@ -24,15 +24,18 @@ public class TradingAgentService {
     private final TradingAgentRepository tradingAgentRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     public TradingAgentService(
             TradingAgentRepository tradingAgentRepository,
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            AuditLogService auditLogService) {
 
         this.tradingAgentRepository = tradingAgentRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -98,13 +101,30 @@ public class TradingAgentService {
     }
 
     @Transactional
-    public AgentProfileResponse updateAgentStatus(UUID agentId, AgentStatus newStatus) {
-        TradingAgentEntity agent = findAgent(agentId);
+    public AgentProfileResponse updateAgentStatus(
+            UUID agentId,
+            AgentStatus newStatus,
+            String adminUsername) {
+
+        // Lock agent while admin updates status
+        TradingAgentEntity agent = tradingAgentRepository.findByIdForUpdate(agentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Agent profile not found"));
 
         // Update agent account status
         UserEntity user = agent.getUser();
+        AgentStatus previousStatus = user.getStatus();
         user.setStatus(newStatus);
         userRepository.save(user);
+
+        // Save agent status audit
+        auditLogService.logAction(
+                null,
+                adminUsername,
+                AuditLogService.AGENT_STATUS_CHANGE,
+                previousStatus.name(),
+                newStatus.name(),
+                "Agent ID: " + agentId);
 
         return toResponse(agent);
     }
