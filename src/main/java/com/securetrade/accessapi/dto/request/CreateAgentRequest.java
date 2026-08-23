@@ -1,30 +1,40 @@
 package com.securetrade.accessapi.dto.request;
 
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
 public class CreateAgentRequest {
 
     @NotBlank(message = "Username is required")
+    @Size(max = 50, message = "Username must be 50 characters or less")
     private String username;
 
     @NotBlank(message = "Password is required")
     private String password;
 
     @NotBlank(message = "Agent code is required")
+    @Size(max = 50, message = "Agent code must be 50 characters or less")
     private String agentCode;
 
     @NotBlank(message = "Name is required")
+    @Size(max = 100, message = "Name must be 100 characters or less")
     private String name;
 
     @NotBlank(message = "Strategy type is required")
+    @Size(max = 50, message = "Strategy type must be 50 characters or less")
     private String strategyType;
 
     @NotNull(message = "Max allowed volume is required")
     @Positive(message = "Max allowed volume must be positive")
+    @Digits(
+            integer = 13,
+            fraction = 2,
+            message = "Max allowed volume must fit 13 whole digits and 2 decimal digits")
     private BigDecimal maxAllowedVolume;
 
     public CreateAgentRequest() {
