@@ -19,12 +19,32 @@ public interface AccessRequestRepository extends JpaRepository<AccessRequestEnti
     @EntityGraph(attributePaths = {"agent", "agent.user"})
     Optional<AccessRequestEntity> findById(UUID id);
 
-    Page<AccessRequestEntity> findByAgentId(UUID agentId, Pageable pageable);
+    @Query(
+            value = """
+                    select request
+                    from AccessRequestEntity request
+                    join fetch request.agent agent
+                    where agent.id = :agentId
+                    """,
+            countQuery = """
+                    select count(request)
+                    from AccessRequestEntity request
+                    where request.agent.id = :agentId
+                    """)
+    Page<AccessRequestEntity> findByAgentId(
+            @Param("agentId") UUID agentId,
+            Pageable pageable);
 
-    @EntityGraph(attributePaths = "agent")
+    @Query("""
+            select request
+            from AccessRequestEntity request
+            join fetch request.agent agent
+            where agent.id = :agentId
+              and request.idempotencyKey = :idempotencyKey
+            """)
     Optional<AccessRequestEntity> findByAgentIdAndIdempotencyKey(
-            UUID agentId,
-            String idempotencyKey);
+            @Param("agentId") UUID agentId,
+            @Param("idempotencyKey") String idempotencyKey);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select request from AccessRequestEntity request where request.id = :requestId")
