@@ -1,12 +1,12 @@
 package com.securetrade.accessapi.security.config;
 
+import com.securetrade.accessapi.security.handler.SecurityErrorHandler;
 import com.securetrade.accessapi.security.jwt.JwtAuthenticationFilter;
 import com.securetrade.accessapi.security.jwt.JwtTokenProvider;
 import com.securetrade.accessapi.security.service.CustomUserDetailsService;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -16,7 +16,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -43,7 +42,8 @@ public class SecurityConfig {
             HttpSecurity http,
             AuthenticationManager authenticationManager,
             JwtTokenProvider jwtTokenProvider,
-            CustomUserDetailsService userDetailsService) throws Exception {
+            CustomUserDetailsService userDetailsService,
+            SecurityErrorHandler securityErrorHandler) throws Exception {
 
         JwtAuthenticationFilter jwtFilter =
                 new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService);
@@ -56,7 +56,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(errors -> errors
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                        .authenticationEntryPoint(securityErrorHandler)
+                        .accessDeniedHandler(securityErrorHandler))
                 .authorizeHttpRequests(requests -> requests
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
