@@ -134,32 +134,16 @@ These documentation routes are public.
 
 ## Initial Admin Account
 
-The application does not create a default admin account. It also does not expose a public registration endpoint.
+The application creates this admin account on first startup when it does not already exist:
 
-Provision the first admin through a trusted database bootstrap process. Use a BCrypt hash with cost factor 12 to match accounts created by the application. Never store a plain password.
+- Username: `admin_user`
+- Password: `AdminPassword123!`
+- Role: `ADMIN`
+- Status: `ACTIVE`
 
-Development SQL template:
+The password is stored as a BCrypt hash. Later application starts do not replace the existing account or reset its password.
 
-```sql
-INSERT INTO users (
-    id,
-    username,
-    password_hash,
-    role,
-    status,
-    created_at
-)
-VALUES (
-    gen_random_uuid(),
-    'admin',
-    '<BCrypt cost-12 password hash>',
-    'ADMIN',
-    'ACTIVE',
-    CURRENT_TIMESTAMP
-);
-```
-
-Do not use shared or published admin credentials.
+These credentials are for local development only. Change or disable this bootstrap account before using the application in another environment.
 
 ## Authentication
 
@@ -169,8 +153,8 @@ Login is the only public business API endpoint. Swagger and OpenAPI routes are a
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "admin",
-    "password": "your-password"
+    "username": "admin_user",
+    "password": "AdminPassword123!"
   }'
 ```
 
@@ -180,7 +164,7 @@ Example response:
 {
   "token": "eyJhbGciOiJIUzI1NiJ9...",
   "tokenType": "Bearer",
-  "username": "admin",
+  "username": "admin_user",
   "role": "ADMIN"
 }
 ```
@@ -353,7 +337,7 @@ sh ./mvnw clean package
 
 Latest verified result:
 
-- 113 tests
+- 115 tests
 - 0 failures
 - 0 errors
 - 0 skipped
