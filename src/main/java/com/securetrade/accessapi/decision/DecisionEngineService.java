@@ -7,8 +7,9 @@ import com.securetrade.accessapi.dto.response.AccessRequestResponse;
 import com.securetrade.accessapi.entity.AccessRequestEntity;
 import com.securetrade.accessapi.entity.TradingAgentEntity;
 import com.securetrade.accessapi.service.AccessRequestPersistenceService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 
@@ -30,18 +31,34 @@ public class DecisionEngineService {
         this.persistenceService = persistenceService;
     }
 
-    @Transactional
     public AccessRequestResponse evaluateAndSave(
             TradingAgentEntity agent,
             SubmitTradeAccessRequest request,
             String idempotencyKey) {
+
+        String effectiveIdempotencyKey = StringUtils.hasText(idempotencyKey)
+                ? idempotencyKey
+                : null;
+
+        if (effectiveIdempotencyKey != null) {
+            // Return saved result for duplicate request
+            AccessRequestResponse savedResponse = persistenceService
+                    .findByAgentIdAndIdempotencyKey(
+                            agent.getId(),
+                            effectiveIdempotencyKey)
+                    .orElse(null);
+
+            if (savedResponse != null) {
+                return savedResponse;
+            }
+        }
 
         // Check if agent account is active
         if (agent.getUser().getStatus() != AgentStatus.ACTIVE) {
             return saveDecision(
                     agent,
                     request,
-                    idempotencyKey,
+                    effectiveIdempotencyKey,
                     DecisionResult.REJECTED,
                     ReasonCode.ERR_AGENT_SUSPENDED);
         }
@@ -51,7 +68,7 @@ public class DecisionEngineService {
             return saveDecision(
                     agent,
                     request,
-                    idempotencyKey,
+                    effectiveIdempotencyKey,
                     DecisionResult.REJECTED,
                     ReasonCode.ERR_EXCEEDS_AGENT_LIMIT);
         }
@@ -62,7 +79,7 @@ public class DecisionEngineService {
             return saveDecision(
                     agent,
                     request,
-                    idempotencyKey,
+                    effectiveIdempotencyKey,
                     DecisionResult.REJECTED,
                     ReasonCode.ERR_EXCEEDS_HARD_LIMIT);
         }
@@ -73,7 +90,7 @@ public class DecisionEngineService {
             return saveDecision(
                     agent,
                     request,
-                    idempotencyKey,
+                    effectiveIdempotencyKey,
                     DecisionResult.MANUAL_REVIEW,
                     ReasonCode.FLAG_HIGH_VOL_RISK);
         }
@@ -82,7 +99,7 @@ public class DecisionEngineService {
         return saveDecision(
                 agent,
                 request,
-                idempotencyKey,
+                effectiveIdempotencyKey,
                 DecisionResult.APPROVED,
                 ReasonCode.EXEC_PASS_STANDARD);
     }
@@ -108,6 +125,18 @@ public class DecisionEngineService {
                 reasonCode,
                 idempotencyKey);
 
-        return persistenceService.saveRequest(entity);
+        if (!StringUtils.hasText(idempotencyKey)) {
+            return persistenceService.saveRequest(entity);
+        }
+
+        try {
+            // Save new request with idempotency key
+            return persistenceService.saveIdempotentRequest(entity);
+        } catch (DataIntegrityViolationException exception) {
+            // Return request saved by another call
+            return persistenceService
+                    .findByAgentIdAndIdempotencyKey(agent.getId(), idempotencyKey)
+                    .orElseThrow(() -> exception);
+        }
     }
 }
