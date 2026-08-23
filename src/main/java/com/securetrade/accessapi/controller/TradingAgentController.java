@@ -5,6 +5,7 @@ import com.securetrade.accessapi.common.exception.ResourceNotFoundException;
 import com.securetrade.accessapi.dto.request.CreateAgentRequest;
 import com.securetrade.accessapi.dto.request.UpdateAgentStatusRequest;
 import com.securetrade.accessapi.dto.response.AgentProfileResponse;
+import com.securetrade.accessapi.security.util.SecurityUtils;
 import com.securetrade.accessapi.service.TradingAgentService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -57,7 +58,10 @@ public class TradingAgentController {
             @Valid @RequestBody UpdateAgentStatusRequest request) {
 
         AgentProfileResponse response =
-                tradingAgentService.updateAgentStatus(id, request.getStatus());
+                tradingAgentService.updateAgentStatus(
+                        id,
+                        request.getStatus(),
+                        SecurityUtils.getCurrentUsername());
         return ResponseEntity.ok(response);
     }
 
