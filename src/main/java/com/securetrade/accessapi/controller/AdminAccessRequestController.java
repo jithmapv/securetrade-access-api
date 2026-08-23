@@ -1,7 +1,5 @@
 package com.securetrade.accessapi.controller;
 
-import com.securetrade.accessapi.common.exception.InvalidRequestException;
-import com.securetrade.accessapi.common.exception.ResourceNotFoundException;
 import com.securetrade.accessapi.dto.request.AdminOverrideRequest;
 import com.securetrade.accessapi.dto.response.AccessRequestResponse;
 import com.securetrade.accessapi.security.util.SecurityUtils;
@@ -12,9 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,15 +51,5 @@ public class AdminAccessRequestController {
         AccessRequestResponse response = manualReviewService
                 .processOverride(id, overrideRequest, adminUsername);
         return ResponseEntity.ok(response);
-    }
-
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Void> handleResourceNotFound() {
-        return ResponseEntity.notFound().build();
-    }
-
-    @ExceptionHandler(InvalidRequestException.class)
-    public ResponseEntity<Void> handleInvalidRequest() {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
 }
