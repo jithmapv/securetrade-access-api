@@ -52,6 +52,9 @@ class ManualReviewServiceTest {
     @Mock
     private AccessRequestPersistenceService persistenceService;
 
+    @Mock
+    private AuditLogService auditLogService;
+
     @InjectMocks
     private ManualReviewService manualReviewService;
 
@@ -123,7 +126,7 @@ class ManualReviewServiceTest {
 
         verify(accessRequestRepository, never())
                 .save(any(AccessRequestEntity.class));
-        verifyNoInteractions(persistenceService);
+        verifyNoInteractions(persistenceService, auditLogService);
     }
 
     @Test
@@ -162,7 +165,7 @@ class ManualReviewServiceTest {
 
         verify(accessRequestRepository, never())
                 .save(any(AccessRequestEntity.class));
-        verifyNoInteractions(persistenceService);
+        verifyNoInteractions(persistenceService, auditLogService);
     }
 
     @Test
@@ -183,7 +186,7 @@ class ManualReviewServiceTest {
 
         verify(accessRequestRepository, never())
                 .save(any(AccessRequestEntity.class));
-        verifyNoInteractions(persistenceService);
+        verifyNoInteractions(persistenceService, auditLogService);
     }
 
     private void assertSuccessfulOverride(
@@ -213,6 +216,13 @@ class ManualReviewServiceTest {
         assertThat(response.getCreatedAt()).isEqualTo(CREATED_AT);
         verify(accessRequestRepository).save(request);
         verify(persistenceService).toResponse(request);
+        verify(auditLogService).logAction(
+                REQUEST_ID,
+                ADMIN_USERNAME,
+                AuditLogService.ADMIN_OVERRIDE,
+                DecisionResult.MANUAL_REVIEW.name(),
+                outcome.name(),
+                "Reviewed by admin");
     }
 
     private AccessRequestResponse createResponse(AccessRequestEntity entity) {
