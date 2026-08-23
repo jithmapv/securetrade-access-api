@@ -125,13 +125,15 @@ public class DecisionEngineService {
                 reasonCode,
                 idempotencyKey);
 
+        String actorUsername = agent.getUser().getUsername();
+
         if (!StringUtils.hasText(idempotencyKey)) {
-            return persistenceService.saveRequest(entity);
+            return persistenceService.saveRequest(entity, actorUsername);
         }
 
         try {
             // Save new request with idempotency key
-            return persistenceService.saveIdempotentRequest(entity);
+            return persistenceService.saveIdempotentRequest(entity, actorUsername);
         } catch (DataIntegrityViolationException exception) {
             // Return request saved by another call
             return persistenceService
