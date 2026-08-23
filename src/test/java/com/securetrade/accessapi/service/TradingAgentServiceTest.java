@@ -38,6 +38,7 @@ class TradingAgentServiceTest {
     private static final UUID USER_ID = UUID.fromString("7c4828aa-d7cd-45be-afbc-8cb06d7cc7cc");
     private static final UUID AGENT_ID = UUID.fromString("7c6b1c42-f3e5-4541-9be4-dce5f4cb39e2");
     private static final Instant CREATED_AT = Instant.parse("2026-08-23T06:30:00Z");
+    private static final String ADMIN_USERNAME = "admin.one";
 
     @Mock
     private TradingAgentRepository tradingAgentRepository;
@@ -84,7 +85,9 @@ class TradingAgentServiceTest {
             return agent;
         });
 
-        AgentProfileResponse response = tradingAgentService.registerAgent(request);
+        AgentProfileResponse response = tradingAgentService.registerAgent(
+                request,
+                ADMIN_USERNAME);
 
         ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
         verify(userRepository).saveAndFlush(userCaptor.capture());
@@ -113,13 +116,22 @@ class TradingAgentServiceTest {
         assertThat(response.getRole()).isEqualTo(UserRole.TRADING_AGENT);
         assertThat(response.getStatus()).isEqualTo(AgentStatus.ACTIVE);
         assertThat(response.getCreatedAt()).isEqualTo(CREATED_AT);
+        verify(auditLogService).logAction(
+                null,
+                ADMIN_USERNAME,
+                AuditLogService.AGENT_REGISTRATION,
+                null,
+                AgentStatus.ACTIVE.name(),
+                "Agent ID: " + AGENT_ID);
     }
 
     @Test
     void duplicateUsernameDoesNotSaveAgent() {
         when(userRepository.existsByUsername(request.getUsername())).thenReturn(true);
 
-        assertThatThrownBy(() -> tradingAgentService.registerAgent(request))
+        assertThatThrownBy(() -> tradingAgentService.registerAgent(
+                request,
+                ADMIN_USERNAME))
                 .isInstanceOf(DuplicateResourceException.class);
 
         verify(passwordEncoder, never()).encode(any());
@@ -132,7 +144,9 @@ class TradingAgentServiceTest {
         when(userRepository.existsByUsername(request.getUsername())).thenReturn(false);
         when(tradingAgentRepository.existsByAgentCode(request.getAgentCode())).thenReturn(true);
 
-        assertThatThrownBy(() -> tradingAgentService.registerAgent(request))
+        assertThatThrownBy(() -> tradingAgentService.registerAgent(
+                request,
+                ADMIN_USERNAME))
                 .isInstanceOf(DuplicateResourceException.class);
 
         verify(passwordEncoder, never()).encode(any());
@@ -150,7 +164,9 @@ class TradingAgentServiceTest {
                         "duplicate",
                         new SQLException("duplicate", "23505")));
 
-        assertThatThrownBy(() -> tradingAgentService.registerAgent(request))
+        assertThatThrownBy(() -> tradingAgentService.registerAgent(
+                request,
+                ADMIN_USERNAME))
                 .isInstanceOf(DuplicateResourceException.class)
                 .hasMessage("Username or agent code already exists")
                 .hasCauseInstanceOf(DataIntegrityViolationException.class);
@@ -169,7 +185,9 @@ class TradingAgentServiceTest {
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encoded-password");
         when(userRepository.saveAndFlush(any(UserEntity.class))).thenThrow(databaseError);
 
-        assertThatThrownBy(() -> tradingAgentService.registerAgent(request))
+        assertThatThrownBy(() -> tradingAgentService.registerAgent(
+                request,
+                ADMIN_USERNAME))
                 .isSameAs(databaseError);
 
         verify(tradingAgentRepository, never()).saveAndFlush(any(TradingAgentEntity.class));
@@ -180,8 +198,8 @@ class TradingAgentServiceTest {
         UserEntity user = createUser();
         TradingAgentEntity agent = createAgent(user);
 
-        when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
-        when(tradingAgentRepository.findByUserId(USER_ID)).thenReturn(Optional.of(agent));
+        when(tradingAgentRepository.findByUserUsername(user.getUsername()))
+                .thenReturn(Optional.of(agent));
 
         AgentProfileResponse response =
                 tradingAgentService.getAgentProfileByUsername(user.getUsername());
@@ -191,7 +209,8 @@ class TradingAgentServiceTest {
         assertThat(response.getUsername()).isEqualTo("agent.one");
         assertThat(response.getAgentCode()).isEqualTo("AGT-001");
         assertThat(response.getStatus()).isEqualTo(AgentStatus.ACTIVE);
-        verify(tradingAgentRepository).findByUserId(USER_ID);
+        verify(tradingAgentRepository).findByUserUsername(user.getUsername());
+        verify(userRepository, never()).findByUsername(any());
     }
 
     @Test
