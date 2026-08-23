@@ -40,6 +40,9 @@ class AccessRequestPersistenceServiceTest {
     @Mock
     private AccessRequestRepository accessRequestRepository;
 
+    @Mock
+    private AuditLogService auditLogService;
+
     @InjectMocks
     private AccessRequestPersistenceService persistenceService;
 
@@ -66,12 +69,21 @@ class AccessRequestPersistenceServiceTest {
 
     @Test
     void saveRequestReturnsSavedResponse() {
-        when(accessRequestRepository.save(request)).thenReturn(request);
+        when(accessRequestRepository.saveAndFlush(request)).thenReturn(request);
 
-        AccessRequestResponse response = persistenceService.saveRequest(request);
+        AccessRequestResponse response = persistenceService.saveRequest(
+                request,
+                "agent.one");
 
         assertResponse(response);
-        verify(accessRequestRepository).save(request);
+        verify(accessRequestRepository).saveAndFlush(request);
+        verify(auditLogService).logAction(
+                REQUEST_ID,
+                "agent.one",
+                AuditLogService.TRADE_EVALUATION,
+                null,
+                DecisionResult.APPROVED.name(),
+                "TEST_RULE");
     }
 
     @Test
