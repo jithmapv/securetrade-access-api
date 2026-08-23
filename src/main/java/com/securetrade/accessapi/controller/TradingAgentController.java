@@ -1,7 +1,5 @@
 package com.securetrade.accessapi.controller;
 
-import com.securetrade.accessapi.common.exception.DuplicateResourceException;
-import com.securetrade.accessapi.common.exception.ResourceNotFoundException;
 import com.securetrade.accessapi.dto.request.CreateAgentRequest;
 import com.securetrade.accessapi.dto.request.UpdateAgentStatusRequest;
 import com.securetrade.accessapi.dto.response.AgentProfileResponse;
@@ -16,7 +14,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -100,15 +97,5 @@ public class TradingAgentController {
                         request.getStatus(),
                         SecurityUtils.getCurrentUsername());
         return ResponseEntity.ok(response);
-    }
-
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Void> handleResourceNotFound() {
-        return ResponseEntity.notFound().build();
-    }
-
-    @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<Void> handleDuplicateResource() {
-        return ResponseEntity.status(HttpStatus.CONFLICT).build();
     }
 }
