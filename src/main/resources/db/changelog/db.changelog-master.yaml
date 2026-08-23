@@ -12,3 +12,6 @@ databaseChangeLog:
   - include:
       file: changes/004-add-idempotency-constraint.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/005-create-audit-logs-table.yaml
+      relativeToChangelogFile: true
