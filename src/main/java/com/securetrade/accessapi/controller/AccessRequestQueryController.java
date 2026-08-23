@@ -1,7 +1,6 @@
 package com.securetrade.accessapi.controller;
 
 import com.securetrade.accessapi.common.exception.ResourceNotFoundException;
-import com.securetrade.accessapi.common.exception.SecureTradeAccessDeniedException;
 import com.securetrade.accessapi.dto.response.AccessRequestResponse;
 import com.securetrade.accessapi.entity.AccessRequestEntity;
 import com.securetrade.accessapi.entity.TradingAgentEntity;
@@ -19,9 +18,7 @@ import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -101,15 +98,5 @@ public class AccessRequestQueryController {
         ownershipValidationService.validateRequestOwnership(request, username);
 
         return ResponseEntity.ok(persistenceService.toResponse(request));
-    }
-
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Void> handleResourceNotFound() {
-        return ResponseEntity.notFound().build();
-    }
-
-    @ExceptionHandler(SecureTradeAccessDeniedException.class)
-    public ResponseEntity<Void> handleAccessDenied() {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 }
