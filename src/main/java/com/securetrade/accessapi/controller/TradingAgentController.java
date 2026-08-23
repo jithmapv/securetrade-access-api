@@ -48,7 +48,9 @@ public class TradingAgentController {
     public ResponseEntity<AgentProfileResponse> registerAgent(
             @Valid @RequestBody CreateAgentRequest request) {
 
-        AgentProfileResponse response = tradingAgentService.registerAgent(request);
+        AgentProfileResponse response = tradingAgentService.registerAgent(
+                request,
+                SecurityUtils.getCurrentUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
