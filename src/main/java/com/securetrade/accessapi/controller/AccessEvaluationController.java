@@ -7,6 +7,12 @@ import com.securetrade.accessapi.dto.request.SubmitTradeAccessRequest;
 import com.securetrade.accessapi.dto.response.AccessRequestResponse;
 import com.securetrade.accessapi.entity.TradingAgentEntity;
 import com.securetrade.accessapi.repository.TradingAgentRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/access")
+@Tag(name = "Trade Evaluation", description = "Trade access decision operations")
+@SecurityRequirement(name = "bearerAuth")
 public class AccessEvaluationController {
 
     private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 64;
@@ -36,8 +44,21 @@ public class AccessEvaluationController {
     }
 
     @PostMapping("/evaluate")
+    @Operation(
+            summary = "Evaluate a trade request",
+            description = "Checks a trade request and saves the decision. An idempotency key is optional.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Trade request evaluated"),
+            @ApiResponse(responseCode = "400", description = "Request data or idempotency key is not valid"),
+            @ApiResponse(responseCode = "401", description = "JWT token is missing or not valid"),
+            @ApiResponse(responseCode = "403", description = "Access is not allowed"),
+            @ApiResponse(responseCode = "404", description = "Trading agent not found")
+    })
     public ResponseEntity<AccessRequestResponse> evaluate(
             @Valid @RequestBody SubmitTradeAccessRequest request,
+            @Parameter(
+                    description = "Optional key used to return the same saved result",
+                    example = "trade-2026-0001")
             @RequestHeader(
                     value = "X-Idempotency-Key",
                     required = false) String rawIdempotencyKey) {
