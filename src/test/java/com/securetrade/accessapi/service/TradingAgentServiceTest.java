@@ -48,6 +48,9 @@ class TradingAgentServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private AuditLogService auditLogService;
+
     @InjectMocks
     private TradingAgentService tradingAgentService;
 
@@ -195,17 +198,28 @@ class TradingAgentServiceTest {
     void updateAgentStatusChangesLinkedUser() {
         UserEntity user = createUser();
         TradingAgentEntity agent = createAgent(user);
-        when(tradingAgentRepository.findById(AGENT_ID)).thenReturn(Optional.of(agent));
+        when(tradingAgentRepository.findByIdForUpdate(AGENT_ID))
+                .thenReturn(Optional.of(agent));
         when(userRepository.save(user)).thenReturn(user);
 
         AgentProfileResponse response =
-                tradingAgentService.updateAgentStatus(AGENT_ID, AgentStatus.SUSPENDED);
+                tradingAgentService.updateAgentStatus(
+                        AGENT_ID,
+                        AgentStatus.SUSPENDED,
+                        "admin.one");
 
         assertThat(user.getStatus()).isEqualTo(AgentStatus.SUSPENDED);
         assertThat(response.getStatus()).isEqualTo(AgentStatus.SUSPENDED);
         assertThat(response.getId()).isEqualTo(AGENT_ID);
         verify(userRepository).save(user);
         verify(tradingAgentRepository, never()).save(any(TradingAgentEntity.class));
+        verify(auditLogService).logAction(
+                null,
+                "admin.one",
+                AuditLogService.AGENT_STATUS_CHANGE,
+                AgentStatus.ACTIVE.name(),
+                AgentStatus.SUSPENDED.name(),
+                "Agent ID: " + AGENT_ID);
     }
 
     private UserEntity createUser() {
