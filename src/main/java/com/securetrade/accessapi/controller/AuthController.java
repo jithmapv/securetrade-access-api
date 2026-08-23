@@ -1,6 +1,5 @@
 package com.securetrade.accessapi.controller;
 
-import com.securetrade.accessapi.common.exception.ResourceNotFoundException;
 import com.securetrade.accessapi.dto.request.LoginRequest;
 import com.securetrade.accessapi.dto.response.AuthResponse;
 import com.securetrade.accessapi.service.AuthService;
@@ -9,9 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,10 +35,6 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Username or password is not valid")
     })
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        try {
-            return ResponseEntity.ok(authService.login(request));
-        } catch (AuthenticationException | ResourceNotFoundException exception) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        return ResponseEntity.ok(authService.login(request));
     }
 }
