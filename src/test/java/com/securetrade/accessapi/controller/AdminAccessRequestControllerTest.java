@@ -9,9 +9,11 @@ import com.securetrade.accessapi.common.enums.UserRole;
 import com.securetrade.accessapi.dto.request.AdminOverrideRequest;
 import com.securetrade.accessapi.dto.request.LoginRequest;
 import com.securetrade.accessapi.entity.AccessRequestEntity;
+import com.securetrade.accessapi.entity.AuditLogEntity;
 import com.securetrade.accessapi.entity.TradingAgentEntity;
 import com.securetrade.accessapi.entity.UserEntity;
 import com.securetrade.accessapi.repository.AccessRequestRepository;
+import com.securetrade.accessapi.repository.AuditLogRepository;
 import com.securetrade.accessapi.repository.TradingAgentRepository;
 import com.securetrade.accessapi.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,6 +32,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,6 +60,9 @@ class AdminAccessRequestControllerTest {
 
     @Autowired
     private AccessRequestRepository accessRequestRepository;
+
+    @Autowired
+    private AuditLogRepository auditLogRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -126,6 +133,10 @@ class AdminAccessRequestControllerTest {
                 new TransactionTemplate(transactionManager);
 
         transactionTemplate.executeWithoutResult(status -> {
+            removeAuditLogsForActor(adminUsername);
+            removeAuditLogsForActor(agentUsername);
+            auditLogRepository.flush();
+
             if (requestId != null && accessRequestRepository.existsById(requestId)) {
                 accessRequestRepository.deleteById(requestId);
                 accessRequestRepository.flush();
@@ -146,6 +157,17 @@ class AdminAccessRequestControllerTest {
 
             userRepository.flush();
         });
+    }
+
+    private void removeAuditLogsForActor(String actorUsername) {
+        if (actorUsername == null) {
+            return;
+        }
+
+        List<AuditLogEntity> auditLogs = auditLogRepository
+                .findByActorUsername(actorUsername, Pageable.unpaged())
+                .getContent();
+        auditLogRepository.deleteAllInBatch(auditLogs);
     }
 
     @Test
