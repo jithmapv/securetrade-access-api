@@ -7,6 +7,10 @@ import com.securetrade.accessapi.common.enums.UserRole;
 import com.securetrade.accessapi.entity.AccessRequestEntity;
 import com.securetrade.accessapi.entity.TradingAgentEntity;
 import com.securetrade.accessapi.entity.UserEntity;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceUnitUtil;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -33,6 +37,9 @@ class AccessRequestRepositoryTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void savesAndFindsRequestsByAgentWithPagination() {
@@ -110,6 +117,56 @@ class AccessRequestRepositoryTest {
 
         assertThat(foundFirst.getId()).isEqualTo(firstRequest.getId());
         assertThat(foundSecond.getId()).isEqualTo(secondRequest.getId());
+    }
+
+    @Test
+    void historyQueryLoadsAgentForResponseMapping() {
+        TradingAgentEntity agent = createAgent();
+        saveRequest(
+                agent,
+                "AAPL",
+                "history-key-a",
+                Instant.parse("2026-08-23T08:00:00Z"));
+        saveRequest(
+                agent,
+                "MSFT",
+                "history-key-b",
+                Instant.parse("2026-08-23T08:01:00Z"));
+        saveRequest(
+                agent,
+                "NVDA",
+                "history-key-c",
+                Instant.parse("2026-08-23T08:02:00Z"));
+        entityManager.flush();
+        entityManager.clear();
+
+        Statistics statistics = entityManager
+                .getEntityManagerFactory()
+                .unwrap(SessionFactory.class)
+                .getStatistics();
+        boolean statisticsWereEnabled = statistics.isStatisticsEnabled();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+
+        try {
+            Page<AccessRequestEntity> requests = accessRequestRepository.findByAgentId(
+                    agent.getId(),
+                    PageRequest.of(0, 2));
+
+            AccessRequestEntity request = requests.getContent().get(0);
+            PersistenceUnitUtil persistenceUnitUtil = entityManager
+                    .getEntityManagerFactory()
+                    .getPersistenceUnitUtil();
+
+            assertThat(persistenceUnitUtil.isLoaded(request, "agent")).isTrue();
+            assertThat(requests.getContent())
+                    .extracting(item -> item.getAgent().getAgentCode())
+                    .containsOnly(agent.getAgentCode());
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(2);
+        } finally {
+            statistics.clear();
+            statistics.setStatisticsEnabled(statisticsWereEnabled);
+        }
     }
 
     private TradingAgentEntity createAgent() {
