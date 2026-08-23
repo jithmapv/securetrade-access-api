@@ -9,3 +9,6 @@ databaseChangeLog:
   - include:
       file: changes/003-create-access-requests-table.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/004-add-idempotency-constraint.yaml
+      relativeToChangelogFile: true
