@@ -19,6 +19,7 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Entity
@@ -94,7 +95,7 @@ public class AccessRequestEntity {
     @PrePersist
     void setCreateTime() {
         if (createdAt == null) {
-            createdAt = Instant.now();
+            createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         }
     }
 
