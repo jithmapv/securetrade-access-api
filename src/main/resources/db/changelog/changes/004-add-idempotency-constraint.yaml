@@ -1,0 +1,14 @@
+# Unique key for agent idempotency
+databaseChangeLog:
+  - changeSet:
+      id: 004-add-idempotency-constraint
+      author: securetrade
+      changes:
+        - addUniqueConstraint:
+            tableName: access_requests
+            columnNames: agent_id, idempotency_key
+            constraintName: uk_access_requests_agent_idempotency
+      rollback:
+        - dropUniqueConstraint:
+            tableName: access_requests
+            constraintName: uk_access_requests_agent_idempotency
