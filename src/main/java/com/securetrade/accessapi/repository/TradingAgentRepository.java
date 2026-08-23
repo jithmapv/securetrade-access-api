@@ -13,15 +13,30 @@ import java.util.UUID;
 
 public interface TradingAgentRepository extends JpaRepository<TradingAgentEntity, UUID> {
 
+    @Override
+    @EntityGraph(attributePaths = "user")
+    Optional<TradingAgentEntity> findById(UUID id);
+
     Optional<TradingAgentEntity> findByUserId(UUID userId);
 
     Optional<TradingAgentEntity> findByAgentCode(String agentCode);
 
-    @EntityGraph(attributePaths = "user")
-    Optional<TradingAgentEntity> findByUserUsername(String username);
+    @Query("""
+            select agent
+            from TradingAgentEntity agent
+            join fetch agent.user user
+            where user.username = :username
+            """)
+    Optional<TradingAgentEntity> findByUserUsername(
+            @Param("username") String username);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select agent from TradingAgentEntity agent where agent.id = :agentId")
+    @Query("""
+            select agent
+            from TradingAgentEntity agent
+            join fetch agent.user
+            where agent.id = :agentId
+            """)
     Optional<TradingAgentEntity> findByIdForUpdate(@Param("agentId") UUID agentId);
 
     boolean existsByAgentCode(String agentCode);
