@@ -17,13 +17,16 @@ public class ManualReviewService {
 
     private final AccessRequestRepository accessRequestRepository;
     private final AccessRequestPersistenceService persistenceService;
+    private final AuditLogService auditLogService;
 
     public ManualReviewService(
             AccessRequestRepository accessRequestRepository,
-            AccessRequestPersistenceService persistenceService) {
+            AccessRequestPersistenceService persistenceService,
+            AuditLogService auditLogService) {
 
         this.accessRequestRepository = accessRequestRepository;
         this.persistenceService = persistenceService;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -44,6 +47,7 @@ public class ManualReviewService {
                     "Only requests in MANUAL_REVIEW status can be overridden");
         }
 
+        DecisionResult previousOutcome = request.getOutcome();
         DecisionResult newOutcome = overrideRequest.getOutcome();
         if (newOutcome != DecisionResult.APPROVED
                 && newOutcome != DecisionResult.REJECTED) {
@@ -55,6 +59,15 @@ public class ManualReviewService {
         request.setOutcome(newOutcome);
         request.setReasonCode(overrideRequest.getReasonCode());
         AccessRequestEntity savedRequest = accessRequestRepository.save(request);
+
+        // Save admin override audit
+        auditLogService.logAction(
+                requestId,
+                adminUsername,
+                AuditLogService.ADMIN_OVERRIDE,
+                previousOutcome.name(),
+                newOutcome.name(),
+                overrideRequest.getAdminNotes());
 
         return persistenceService.toResponse(savedRequest);
     }
