@@ -17,6 +17,7 @@ public interface AccessRequestRepository extends JpaRepository<AccessRequestEnti
 
     Page<AccessRequestEntity> findByAgentId(UUID agentId, Pageable pageable);
 
+    @EntityGraph(attributePaths = "agent")
     Optional<AccessRequestEntity> findByAgentIdAndIdempotencyKey(
             UUID agentId,
             String idempotencyKey);
