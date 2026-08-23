@@ -10,11 +10,14 @@ import com.securetrade.accessapi.decision.ReasonCode;
 import com.securetrade.accessapi.dto.request.LoginRequest;
 import com.securetrade.accessapi.dto.request.SubmitTradeAccessRequest;
 import com.securetrade.accessapi.entity.AccessRequestEntity;
+import com.securetrade.accessapi.entity.AuditLogEntity;
 import com.securetrade.accessapi.entity.TradingAgentEntity;
 import com.securetrade.accessapi.entity.UserEntity;
 import com.securetrade.accessapi.repository.AccessRequestRepository;
+import com.securetrade.accessapi.repository.AuditLogRepository;
 import com.securetrade.accessapi.repository.TradingAgentRepository;
 import com.securetrade.accessapi.repository.UserRepository;
+import com.securetrade.accessapi.service.AuditLogService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -67,6 +70,9 @@ class AccessEvaluationControllerTest {
     private AccessRequestRepository accessRequestRepository;
 
     @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -81,10 +87,19 @@ class AccessEvaluationControllerTest {
     void removeCommittedAgents() {
         for (CommittedAgent committedAgent : committedAgents) {
             newTransaction().executeWithoutResult(status -> {
+                List<AuditLogEntity> auditLogs = auditLogRepository
+                        .findByActorUsername(
+                                committedAgent.username(),
+                                Pageable.unpaged())
+                        .getContent();
+                auditLogRepository.deleteAllInBatch(auditLogs);
+                auditLogRepository.flush();
+
                 List<AccessRequestEntity> requests = accessRequestRepository
                         .findByAgentId(committedAgent.agentId(), Pageable.unpaged())
                         .getContent();
                 accessRequestRepository.deleteAllInBatch(requests);
+                accessRequestRepository.flush();
                 tradingAgentRepository.deleteById(committedAgent.agentId());
                 tradingAgentRepository.flush();
                 userRepository.deleteById(committedAgent.userId());
@@ -225,6 +240,20 @@ class AccessEvaluationControllerTest {
                 .findByAgentId(agent.agentId(), Pageable.unpaged())
                 .getTotalElements())
                 .isOne();
+
+        UUID requestId = UUID.fromString(firstResponse.get("id").asText());
+        List<AuditLogEntity> auditLogs = auditLogRepository
+                .findByRequestId(requestId, Pageable.unpaged())
+                .getContent();
+        assertThat(auditLogs).singleElement().satisfies(audit -> {
+            assertThat(audit.getActorUsername()).isEqualTo(agent.username());
+            assertThat(audit.getAction())
+                    .isEqualTo(AuditLogService.TRADE_EVALUATION);
+            assertThat(audit.getPreviousState()).isNull();
+            assertThat(audit.getNewState()).isEqualTo("APPROVED");
+            assertThat(audit.getDetails())
+                    .isEqualTo(ReasonCode.EXEC_PASS_STANDARD);
+        });
     }
 
     @Test
