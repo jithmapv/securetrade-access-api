@@ -19,6 +19,7 @@ import com.securetrade.accessapi.repository.TradingAgentRepository;
 import com.securetrade.accessapi.repository.UserRepository;
 import com.securetrade.accessapi.service.AccessRequestPersistenceService;
 import com.securetrade.accessapi.service.AuditLogService;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -86,6 +87,9 @@ class IdempotencyConcurrencyTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @MockitoSpyBean
     private AccessRequestPersistenceService persistenceService;
 
@@ -136,6 +140,7 @@ class IdempotencyConcurrencyTest {
                     .getContent();
             accessRequestRepository.deleteAllInBatch(requests);
             accessRequestRepository.flush();
+            entityManager.clear();
             tradingAgentRepository.deleteById(agentId);
             tradingAgentRepository.flush();
             userRepository.deleteById(userId);
