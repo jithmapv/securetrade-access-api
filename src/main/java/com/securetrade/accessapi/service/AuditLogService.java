@@ -16,6 +16,7 @@ public class AuditLogService {
     public static final String TRADE_EVALUATION = "TRADE_EVALUATION";
     public static final String ADMIN_OVERRIDE = "ADMIN_OVERRIDE";
     public static final String AGENT_STATUS_CHANGE = "AGENT_STATUS_CHANGE";
+    public static final String AGENT_REGISTRATION = "AGENT_REGISTRATION";
 
     private final AuditLogRepository auditLogRepository;
 
