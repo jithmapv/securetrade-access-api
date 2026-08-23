@@ -1,0 +1,64 @@
+# Create trading agents table
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-agents-table
+      author: securetrade
+      changes:
+        - createTable:
+            tableName: trading_agents
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_trading_agents
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: agent_code
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strategy_type
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_allowed_volume
+                  type: NUMERIC(15, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: trading_agents
+            columnNames: user_id
+            constraintName: uk_trading_agents_user_id
+        - addUniqueConstraint:
+            tableName: trading_agents
+            columnNames: agent_code
+            constraintName: uk_trading_agents_agent_code
+        - addForeignKeyConstraint:
+            baseTableName: trading_agents
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_trading_agents_user
+      rollback:
+        - dropTable:
+            tableName: trading_agents
