@@ -100,6 +100,7 @@ class AccessEvaluationControllerTest {
                         .getContent();
                 accessRequestRepository.deleteAllInBatch(requests);
                 accessRequestRepository.flush();
+                entityManager.clear();
                 tradingAgentRepository.deleteById(committedAgent.agentId());
                 tradingAgentRepository.flush();
                 userRepository.deleteById(committedAgent.userId());
