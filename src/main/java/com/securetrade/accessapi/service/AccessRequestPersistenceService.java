@@ -46,7 +46,7 @@ public class AccessRequestPersistenceService {
                 .map(this::toResponse);
     }
 
-    private AccessRequestResponse toResponse(AccessRequestEntity request) {
+    public AccessRequestResponse toResponse(AccessRequestEntity request) {
         return new AccessRequestResponse(
                 request.getId(),
                 request.getAgent().getId(),
