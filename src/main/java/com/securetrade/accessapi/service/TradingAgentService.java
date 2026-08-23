@@ -39,7 +39,9 @@ public class TradingAgentService {
     }
 
     @Transactional
-    public AgentProfileResponse registerAgent(CreateAgentRequest request) {
+    public AgentProfileResponse registerAgent(
+            CreateAgentRequest request,
+            String adminUsername) {
         // Check if username already exists
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("Username already exists");
@@ -69,6 +71,16 @@ public class TradingAgentService {
                     request.getMaxAllowedVolume());
 
             TradingAgentEntity savedAgent = tradingAgentRepository.saveAndFlush(agent);
+
+            // Save agent registration audit
+            auditLogService.logAction(
+                    null,
+                    adminUsername,
+                    AuditLogService.AGENT_REGISTRATION,
+                    null,
+                    AgentStatus.ACTIVE.name(),
+                    "Agent ID: " + savedAgent.getId());
+
             return toResponse(savedAgent);
         } catch (DataIntegrityViolationException exception) {
             if (isUniqueViolation(exception)) {
@@ -84,11 +96,8 @@ public class TradingAgentService {
 
     @Transactional(readOnly = true)
     public AgentProfileResponse getAgentProfileByUsername(String username) {
-        // Get user from database
-        UserEntity user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Agent profile not found"));
-
-        TradingAgentEntity agent = tradingAgentRepository.findByUserId(user.getId())
+        // Get agent and user in one query
+        TradingAgentEntity agent = tradingAgentRepository.findByUserUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent profile not found"));
 
         return toResponse(agent);
