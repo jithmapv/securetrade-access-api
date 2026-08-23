@@ -13,7 +13,6 @@ import com.securetrade.accessapi.dto.request.LoginRequest;
 import com.securetrade.accessapi.dto.request.SubmitTradeAccessRequest;
 import com.securetrade.accessapi.entity.AccessRequestEntity;
 import com.securetrade.accessapi.entity.AuditLogEntity;
-import com.securetrade.accessapi.entity.TradingAgentEntity;
 import com.securetrade.accessapi.entity.UserEntity;
 import com.securetrade.accessapi.repository.AccessRequestRepository;
 import com.securetrade.accessapi.repository.AuditLogRepository;
