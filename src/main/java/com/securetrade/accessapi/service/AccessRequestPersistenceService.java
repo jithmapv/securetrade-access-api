@@ -17,22 +17,35 @@ import java.util.UUID;
 public class AccessRequestPersistenceService {
 
     private final AccessRequestRepository accessRequestRepository;
+    private final AuditLogService auditLogService;
 
-    public AccessRequestPersistenceService(AccessRequestRepository accessRequestRepository) {
+    public AccessRequestPersistenceService(
+            AccessRequestRepository accessRequestRepository,
+            AuditLogService auditLogService) {
+
         this.accessRequestRepository = accessRequestRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
-    public AccessRequestResponse saveRequest(AccessRequestEntity entity) {
+    public AccessRequestResponse saveRequest(
+            AccessRequestEntity entity,
+            String actorUsername) {
+
         // Save trade access request
-        AccessRequestEntity savedRequest = accessRequestRepository.save(entity);
+        AccessRequestEntity savedRequest = accessRequestRepository.saveAndFlush(entity);
+        logEvaluation(savedRequest, actorUsername);
         return toResponse(savedRequest);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public AccessRequestResponse saveIdempotentRequest(AccessRequestEntity entity) {
+    public AccessRequestResponse saveIdempotentRequest(
+            AccessRequestEntity entity,
+            String actorUsername) {
+
         // Save request before this transaction ends
         AccessRequestEntity savedRequest = accessRequestRepository.saveAndFlush(entity);
+        logEvaluation(savedRequest, actorUsername);
         return toResponse(savedRequest);
     }
 
@@ -81,5 +94,19 @@ public class AccessRequestPersistenceService {
                 request.getReasonCode(),
                 request.getIdempotencyKey(),
                 request.getCreatedAt());
+    }
+
+    private void logEvaluation(
+            AccessRequestEntity request,
+            String actorUsername) {
+
+        // Save trade evaluation audit
+        auditLogService.logAction(
+                request.getId(),
+                actorUsername,
+                AuditLogService.TRADE_EVALUATION,
+                null,
+                request.getOutcome().name(),
+                request.getReasonCode());
     }
 }
