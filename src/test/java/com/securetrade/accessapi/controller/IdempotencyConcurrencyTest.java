@@ -6,15 +6,19 @@ import com.securetrade.accessapi.common.enums.AgentStatus;
 import com.securetrade.accessapi.common.enums.DecisionResult;
 import com.securetrade.accessapi.common.enums.TradeType;
 import com.securetrade.accessapi.common.enums.UserRole;
+import com.securetrade.accessapi.decision.ReasonCode;
 import com.securetrade.accessapi.dto.request.LoginRequest;
 import com.securetrade.accessapi.dto.request.SubmitTradeAccessRequest;
 import com.securetrade.accessapi.entity.AccessRequestEntity;
+import com.securetrade.accessapi.entity.AuditLogEntity;
 import com.securetrade.accessapi.entity.TradingAgentEntity;
 import com.securetrade.accessapi.entity.UserEntity;
 import com.securetrade.accessapi.repository.AccessRequestRepository;
+import com.securetrade.accessapi.repository.AuditLogRepository;
 import com.securetrade.accessapi.repository.TradingAgentRepository;
 import com.securetrade.accessapi.repository.UserRepository;
 import com.securetrade.accessapi.service.AccessRequestPersistenceService;
+import com.securetrade.accessapi.service.AuditLogService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -71,6 +76,9 @@ class IdempotencyConcurrencyTest {
 
     @Autowired
     private AccessRequestRepository accessRequestRepository;
+
+    @Autowired
+    private AuditLogRepository auditLogRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -117,10 +125,17 @@ class IdempotencyConcurrencyTest {
         TransactionTemplate transactionTemplate =
                 new TransactionTemplate(transactionManager);
         transactionTemplate.executeWithoutResult(status -> {
+            List<AuditLogEntity> auditLogs = auditLogRepository
+                    .findByActorUsername(username, Pageable.unpaged())
+                    .getContent();
+            auditLogRepository.deleteAllInBatch(auditLogs);
+            auditLogRepository.flush();
+
             List<AccessRequestEntity> requests = accessRequestRepository
                     .findByAgentId(agentId, Pageable.unpaged())
                     .getContent();
             accessRequestRepository.deleteAllInBatch(requests);
+            accessRequestRepository.flush();
             tradingAgentRepository.deleteById(agentId);
             tradingAgentRepository.flush();
             userRepository.deleteById(userId);
@@ -141,7 +156,9 @@ class IdempotencyConcurrencyTest {
             insertBarrier.await(10, TimeUnit.SECONDS);
             return invocation.callRealMethod();
         }).when(persistenceService)
-                .saveIdempotentRequest(any(AccessRequestEntity.class));
+                .saveIdempotentRequest(
+                        any(AccessRequestEntity.class),
+                        anyString());
 
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -182,8 +199,25 @@ class IdempotencyConcurrencyTest {
                     .getTotalElements())
                     .isOne();
 
+            UUID requestId = UUID.fromString(firstResponse.get("id").asText());
+            List<AuditLogEntity> auditLogs = auditLogRepository
+                    .findByRequestId(requestId, Pageable.unpaged())
+                    .getContent();
+            assertThat(auditLogs).singleElement().satisfies(audit -> {
+                assertThat(audit.getActorUsername()).isEqualTo(username);
+                assertThat(audit.getAction())
+                        .isEqualTo(AuditLogService.TRADE_EVALUATION);
+                assertThat(audit.getPreviousState()).isNull();
+                assertThat(audit.getNewState()).isEqualTo("APPROVED");
+                assertThat(audit.getDetails())
+                        .isEqualTo(ReasonCode.EXEC_PASS_STANDARD);
+                assertThat(audit.getTimestamp()).isNotNull();
+            });
+
             verify(persistenceService, times(2))
-                    .saveIdempotentRequest(any(AccessRequestEntity.class));
+                    .saveIdempotentRequest(
+                            any(AccessRequestEntity.class),
+                            anyString());
             verify(persistenceService, times(3))
                     .findByAgentIdAndIdempotencyKey(agentId, idempotencyKey);
         } finally {
