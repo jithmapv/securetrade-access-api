@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: securetrade_access
+          POSTGRES_USER: securetrade
+          POSTGRES_PASSWORD: ci-only-postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U securetrade -d securetrade_access"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_URL: jdbc:postgresql://localhost:5433/securetrade_access
+      DB_USERNAME: securetrade
+      DB_PASSWORD: ci-only-postgres
+      JWT_SECRET: Y2ktb25seS1lcGhlbWVyYWwtand0LWtleS1mb3ItdGVzdHM=
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Verify against PostgreSQL
+        run: sh ./mvnw --batch-mode verify
