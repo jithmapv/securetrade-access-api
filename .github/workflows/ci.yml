@@ -32,7 +32,7 @@ jobs:
       DB_PASSWORD: ci-only-postgres
       JWT_SECRET: Y2ktb25seS1lcGhlbWVyYWwtand0LWtleS1mb3ItdGVzdHM=
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: actions/setup-java@v4
